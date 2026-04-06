@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language AI | Train Model</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand">
+            <span class="status-dot"></span> SignAI
+        </a>
+        <div class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/collect" class="nav-link">Collect Data</a>
+            <a href="/train_page" class="nav-link active">Train Model</a>
+            <a href="/recognize" class="nav-link">Recognize</a>
+        
+            <button id="mic-btn" onclick="startVoiceCommand()" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; cursor: pointer; padding: 0.5rem 1rem; margin-left: 10px; font-size: 1rem; transition: background 0.2s;" title="Voice Command">
+                🎤 Voice Nav
+            </button>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 800px;">
+        <div class="card" style="text-align: center;">
+            <h2>Train Neural Network</h2>
+            <p style="color: #94a3b8; margin-bottom: 2rem;">
+                Train the model on your collected data. This may take a few seconds depending on the dataset size.
+            </p>
+
+            <div id="status-area" style="margin-bottom: 2rem; display: none;">
+                <div class="status active" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">
+                    <span class="status-dot" style="animation: pulse 1s infinite;"></span>
+                    Training in progress...
+                </div>
+            </div>
+
+            <button onclick="startTraining()" class="btn btn-primary" id="trainBtn">
+                Start Training
+            </button>
+
+            <p id="result-msg" style="margin-top: 1.5rem; font-weight: 600;"></p>
+        </div>
+
+        <div class="card">
+            <h3>Tips</h3>
+            <ul style="text-align: left; color: #cbd5e1; line-height: 1.6;">
+                <li>Ensure you have captured at least 20-50 samples per sign.</li>
+                <li>Try to capture different angles and lighting conditions.</li>
+                <li>If accuracy is low, consider deleting the class and re-collecting specific signs.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function startTraining() {
+            $('#trainBtn').prop('disabled', true).css('opacity', '0.5');
+            $('#status-area').show();
+            $('#result-msg').text('');
+
+            $.post('/start_training', function (data) {
+                $('#status-area').hide();
+                $('#trainBtn').prop('disabled', false).css('opacity', '1');
+                $('#result-msg').text(data.status).css('color', 'var(--success-color)');
+            }).fail(function (xhr) {
+                $('#status-area').hide();
+                $('#trainBtn').prop('disabled', false).css('opacity', '1');
+                $('#result-msg').text("Error: " + xhr.responseJSON.error).css('color', 'var(--danger-color)');
+            });
+        }
+    </script>
+
+    <style>
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+
+    <script>
+        setInterval(() => {
+            fetch('/ping').catch(() => {});
+        }, 2000);
+    </script>
+
+<script>
+    function startVoiceCommand() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Your browser does not support Voice Recognition.");
+            return;
+        }
+        
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        let micBtn = document.getElementById('mic-btn');
+        let originalText = micBtn.innerHTML;
+        micBtn.innerHTML = "🔴 Listening...";
+        micBtn.style.background = "#e11d48";
+
+        recognition.start();
+
+                recognition.onresult = function(event) {
+            const speechResult = event.results[0][0].transcript.toLowerCase();
+            console.log("Heard:", speechResult);
+            
+            // ACTION COMMANDS
+            if (speechResult.includes("capture") || speechResult.includes("start collect")) {
+                if (typeof startAutoCapture === 'function') { startAutoCapture(); } else { window.location.href = "/collect"; }
+            } else if (speechResult.includes("stop")) {
+                if (typeof stopAutoCapture === 'function') { stopAutoCapture(); }
+            } else if (speechResult.includes("execute train") || speechResult.includes("start train") || speechResult.includes("begin train")) {
+                if (typeof startTraining === 'function') { startTraining(); } else { window.location.href = "/train_page"; }
+            } else if (speechResult.includes("speak") || speechResult.includes("read") || speechResult.includes("say it") || speechResult.includes("listen")) {
+                if (typeof speak === 'function') { speak(); } else { alert("The speak command is only available on the Recognize page."); }
+            } else if (speechResult.includes("clear") || speechResult.includes("reset") || speechResult.includes("delete")) {
+                if (typeof reset === 'function') { reset(); } else { alert("The clear buffer command is only available on the Recognize page."); }
+            } 
+            // NAVIGATION COMMANDS
+            else if (speechResult.includes("collect") || speechResult.includes("data")) {
+                window.location.href = "/collect";
+            } else if (speechResult.includes("train") || speechResult.includes("model")) {
+                window.location.href = "/train_page";
+            } else if (speechResult.includes("recognize") || speechResult.includes("recognise") || speechResult.includes("recognition") || speechResult.includes("translate") || speechResult.includes("live")) {
+                window.location.href = "/recognize";
+            } else if (speechResult.includes("home") || speechResult.includes("main") || speechResult.includes("menu") || speechResult.includes("back")) {
+                window.location.href = "/";
+            } else {
+                alert("Hmm, I didn't catch that command! I heard: '" + speechResult + "'.\\nPlease try an action like 'capture' or a page like 'home'.");
+            }
+            
+            micBtn.innerHTML = originalText;
+            micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+        };
+
+        recognition.onspeechend = function() {
+            recognition.stop();
+            setTimeout(() => {
+                micBtn.innerHTML = originalText;
+                micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+            }, 500);
+        };
+
+        recognition.onerror = function(event) {
+            console.error("Speech error", event.error);
+            micBtn.innerHTML = originalText;
+            micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+        };
+    }
+</script>
+</body>
+
+
+
+</html>

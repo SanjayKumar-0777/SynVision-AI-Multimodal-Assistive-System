@@ -1,0 +1,7 @@
+flask
+opencv-python
+mediapipe
+protobuf<4.24
+tensorflow
+numpy
+pyttsx3

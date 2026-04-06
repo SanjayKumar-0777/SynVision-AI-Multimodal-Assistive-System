@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture Face</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Capture Face Data</h1>
+    </header>
+    <div class="container">
+        <div style="margin-bottom: 20px;">
+            <input type="text" id="name" placeholder="Enter Name of Person" required>
+            <button id="start-btn" class="btn">Start Capture</button>
+            <a href="/" class="btn btn-secondary">Back to Home</a>
+        </div>
+        
+        <div id="status" class="status-message"></div>
+        
+        <div class="video-container">
+            <img id="video-feed" src="" alt="Video Feed will appear here..." width="640" height="480">
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#start-btn').click(function() {
+                var name = $('#name').val();
+                if (!name) {
+                    alert('Please enter a name!');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/start_capture',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ name: name }),
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            $('#status').text('Starting capture... Look at the camera!');
+                            $('#video-feed').attr('src', "{{ url_for('video_feed_capture') }}");
+                            checkStatus();
+                        } else {
+                            alert(response.message);
+                        }
+                    }
+                });
+            });
+
+            function checkStatus() {
+                var interval = setInterval(function() {
+                    $.get('/capture_status', function(data) {
+                        if (data.uploading) {
+                            $('#status').text('Capturing images: ' + data.count + ' / 50');
+                        } else if (data.complete) {
+                            $('#status').text('Capture Complete! You can now train the model.');
+                            clearInterval(interval);
+                            // Stop feed to save resources (optional, backend stops generator)
+                        }
+                    });
+                }, 1000);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Model</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <h1>Train Face Recognition Model</h1>
+    </header>
+    <div class="container">
+        <p>Click the button below to train the model with the captured face data.</p>
+
+        <button id="train-btn" class="btn">Train Model</button>
+        <a href="/" class="btn btn-secondary">Back to Home</a>
+
+        <div id="status" class="status-message"></div>
+        <div id="loader" style="display:none; margin-top:20px;">
+            <p>Training in progress... This may take a few seconds.</p>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            $('#train-btn').click(function () {
+                $('#status').text('');
+                $('#loader').show();
+                $('#train-btn').prop('disabled', true);
+
+                $.ajax({
+                    url: '/train_model',
+                    type: 'POST',
+                    success: function (response) {
+                        $('#loader').hide();
+                        $('#train-btn').prop('disabled', false);
+
+                        if (response.status === 'success') {
+                            $('#status').css('color', '#27ae60').text(response.message);
+                        } else {
+                            $('#status').css('color', '#c0392b').text('Error: ' + response.message);
+                        }
+                    },
+                    error: function () {
+                        $('#loader').hide();
+                        $('#train-btn').prop('disabled', false);
+                        $('#status').css('color', '#c0392b').text('An error occurred during training.');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

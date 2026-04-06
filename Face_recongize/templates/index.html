@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <header>
+        <h1>Face Recognition System</h1>
+    </header>
+    <div class="container">
+        <h2>Dashboard</h2>
+        <p>Select an operation below:</p>
+
+        <div style="display: flex; justify-content: center; flex-wrap: wrap;">
+            <a href="/capture" class="btn">Capture Face Data</a>
+            <a href="/train_page" class="btn">Train Model</a>
+            <a href="/recognize" class="btn">Recognize Face</a>
+            <a href="/find_object" class="btn" style="background-color: #f39c12;">Find My Object</a>
+        </div>
+    </div>
+</body>
+
+</html>

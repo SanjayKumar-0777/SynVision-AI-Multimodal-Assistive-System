@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language AI | Recognize</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand">
+            <span class="status-dot"></span> SignAI
+        </a>
+        <div class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/collect" class="nav-link">Collect Data</a>
+            <a href="/train_page" class="nav-link">Train Model</a>
+            <a href="/recognize" class="nav-link active">Recognize</a>
+        
+            <button id="mic-btn" onclick="startVoiceCommand()" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; cursor: pointer; padding: 0.5rem 1rem; margin-left: 10px; font-size: 1rem; transition: background 0.2s;" title="Voice Command">
+                🎤 Voice Nav
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="grid-2">
+            <!-- Video Feed -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2>Live Recognition</h2>
+                    <span class="status active"><span class="status-dot"></span> Live</span>
+                </div>
+
+                <div class="video-container">
+                    <img id="videoFeed">
+                </div>
+            </div>
+
+            <!-- Output & Controls -->
+            <div class="card" style="display: flex; flex-direction: column;">
+                <h2>Translation</h2>
+                <div class="output-box" style="
+                    background: rgba(0,0,0,0.3); 
+                    border: 1px solid rgba(255,255,255,0.1); 
+                    border-radius: 12px; 
+                    padding: 1.5rem; 
+                    min-height: 150px; 
+                    margin-bottom: 2rem;
+                    flex: 1;
+                    font-size: 1.5rem;
+                    color: white;
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center;
+                    text-align: center;
+                " id="sentence-display">
+                    <span style="color: #64748b; font-size: 1rem;">(Waiting for signs...)</span>
+                </div>
+
+                <div style="display: grid; gap: 1rem;">
+
+
+                    <button onclick="speak()" class="btn btn-secondary">
+                        🔊 Speak Again
+                    </button>
+
+                    <button onclick="reset()" class="btn btn-danger">
+                        Clear Buffer
+                    </button>
+                </div>
+
+                <div
+                    style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 0.875rem;">
+                    <strong>Auto-Speak Active:</strong> System will speak automatically after 5 seconds of silence.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Poll for updates every 500ms
+        setInterval(translate, 500);
+
+        let previousSentence = "";
+
+        function translate() {
+            $.post('/translate', function (data) {
+                if (data.sentence) {
+                    $('#sentence-display').text(data.sentence).css('color', 'white');
+                    
+                    // Auto-speak the newest recognized sign
+                    if (data.sentence !== previousSentence) {
+                        let currentWords = data.sentence.trim().split(' ');
+                        let prevWords = previousSentence.trim().split(' ');
+                        
+                        // If new words were appended, speak the newest one
+                        if (currentWords.length > prevWords.length || previousSentence === "") {
+                            let newWord = currentWords[currentWords.length - 1];
+                            speak(newWord);
+                        }
+                        previousSentence = data.sentence;
+                    }
+                } else {
+                    $('#sentence-display').html('<span style="color: #64748b; font-size: 1rem;">(Waiting for signs...)</span>');
+                    previousSentence = "";
+                }
+            });
+        }
+
+        function speak(textOverride = null) {
+            var text = textOverride || $('#sentence-display').text();
+            if (text && text !== "(Waiting for signs...)") {
+                var msg = new SpeechSynthesisUtterance();
+                msg.text = text;
+                msg.rate = 1.0;
+                msg.pitch = 1.0;
+                window.speechSynthesis.speak(msg);
+            }
+        }
+
+        function reset() {
+            $.post('/reset', function () {
+                document.getElementById("sentence-display").innerHTML = "";
+                console.log("Reset done");
+            });
+        }
+    </script>
+    <script>
+        window.onload = function() {
+            document.getElementById("videoFeed").src = "/video_feed";
+        };
+    </script>
+    <script>
+        window.onbeforeunload = function () {
+        navigator.sendBeacon('/stop_camera');};
+    </script>
+
+    <script>
+        setInterval(() => {
+            fetch('/ping').catch(() => {});
+        }, 2000);
+    </script>
+
+<script>
+    function startVoiceCommand() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Your browser does not support Voice Recognition.");
+            return;
+        }
+        
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        let micBtn = document.getElementById('mic-btn');
+        let originalText = micBtn.innerHTML;
+        micBtn.innerHTML = "🔴 Listening...";
+        micBtn.style.background = "#e11d48";
+
+        recognition.start();
+
+                recognition.onresult = function(event) {
+            const speechResult = event.results[0][0].transcript.toLowerCase();
+            console.log("Heard:", speechResult);
+            
+            // ACTION COMMANDS
+            if (speechResult.includes("capture") || speechResult.includes("start collect")) {
+                if (typeof startAutoCapture === 'function') { startAutoCapture(); } else { window.location.href = "/collect"; }
+            } else if (speechResult.includes("stop")) {
+                if (typeof stopAutoCapture === 'function') { stopAutoCapture(); }
+            } else if (speechResult.includes("execute train") || speechResult.includes("start train") || speechResult.includes("begin train")) {
+                if (typeof startTraining === 'function') { startTraining(); } else { window.location.href = "/train_page"; }
+            } else if (speechResult.includes("speak") || speechResult.includes("read") || speechResult.includes("say it") || speechResult.includes("listen")) {
+                if (typeof speak === 'function') { speak(); } else { alert("The speak command is only available on the Recognize page."); }
+            } else if (speechResult.includes("clear") || speechResult.includes("reset") || speechResult.includes("delete")) {
+                if (typeof reset === 'function') { reset(); } else { alert("The clear buffer command is only available on the Recognize page."); }
+            } 
+            // NAVIGATION COMMANDS
+            else if (speechResult.includes("collect") || speechResult.includes("data")) {
+                window.location.href = "/collect";
+            } else if (speechResult.includes("train") || speechResult.includes("model")) {
+                window.location.href = "/train_page";
+            } else if (speechResult.includes("recognize") || speechResult.includes("recognise") || speechResult.includes("recognition") || speechResult.includes("translate") || speechResult.includes("live")) {
+                window.location.href = "/recognize";
+            } else if (speechResult.includes("home") || speechResult.includes("main") || speechResult.includes("menu") || speechResult.includes("back")) {
+                window.location.href = "/";
+            } else {
+                alert("Hmm, I didn't catch that command! I heard: '" + speechResult + "'.\\nPlease try an action like 'capture' or a page like 'home'.");
+            }
+            
+            micBtn.innerHTML = originalText;
+            micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+        };
+
+        recognition.onspeechend = function() {
+            recognition.stop();
+            setTimeout(() => {
+                micBtn.innerHTML = originalText;
+                micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+            }, 500);
+        };
+
+        recognition.onerror = function(event) {
+            console.error("Speech error", event.error);
+            micBtn.innerHTML = originalText;
+            micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+        };
+    }
+</script>
+</body>
+
+
+
+</html>

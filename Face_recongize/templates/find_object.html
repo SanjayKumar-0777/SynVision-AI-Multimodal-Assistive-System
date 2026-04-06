@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find My Object</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        :root {
+            --ios-blur: 20px;
+            --ios-bg: rgba(255, 255, 255, 0.65);
+            --ios-card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            --accent-color: #007aff;
+            --siri-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .header {
+            width: 100%;
+            padding: 20px 0;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .main-container {
+            margin-top: 80px;
+            position: relative;
+            width: 90%;
+            max-width: 640px;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--ios-card-shadow);
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 75%;
+            /* 4:3 Aspect Ratio */
+            background: #000;
+        }
+
+        .video-wrapper img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .overlay-status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            opacity: 0;
+            /* Hidden by default */
+        }
+
+        .overlay-status.visible {
+            opacity: 1;
+        }
+
+        .controls-container {
+            padding: 30px;
+            background: var(--ios-bg);
+            backdrop-filter: blur(var(--ios-blur));
+            text-align: center;
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .voice-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background: var(--siri-gradient);
+            box-shadow: 0 10px 20px rgba(118, 75, 162, 0.3);
+            cursor: pointer;
+            position: relative;
+            z-index: 10;
+            transition: transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .voice-btn svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+
+        .voice-btn:active {
+            transform: scale(0.95);
+        }
+
+        .voice-btn.listening::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: inherit;
+            z-index: -1;
+            animation: pulse 1.5s infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+
+            100% {
+                transform: scale(1.6);
+                opacity: 0;
+            }
+        }
+
+        .instruction-text {
+            margin-top: 20px;
+            font-size: 1rem;
+            color: #555;
+            font-weight: 500;
+            min-height: 1.5em;
+            /* Prevent layout shift */
+        }
+
+        .sub-text {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* Calibration hidden by default, accessible if needed or removed for simplicity */
+        .calibration {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .calib-link {
+            font-size: 0.8rem;
+            color: #888;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>Find My Object</h1>
+    </div>
+
+    <div class="main-container">
+        <div class="video-wrapper">
+            <img src="{{ url_for('video_feed_find_object') }}" alt="Camera Feed">
+            <div id="status-chip" class="overlay-status">
+                <span id="status-icon">🔍</span>
+                <span id="status-text">Ready</span>
+            </div>
+        </div>
+
+        <div class="controls-container">
+            <button class="voice-btn" id="voice-btn" onclick="toggleVoice()">
+                <!-- Mic Icon -->
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                    <path
+                        d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                </svg>
+            </button>
+            <div class="instruction-text" id="main-instruction">Tap to Speak</div>
+            <div class="sub-text">Try saying "Find my bottle"</div>
+
+            <div class="calibration">
+                <span class="calib-link" onclick="calibrate()">Calibrate (50cm)</span>
+                <p id="calib-status" style="font-size:0.7rem; height:1rem;"></p>
+            </div>
+        </div>
+    </div>
+
+    <a href="/" class="back-link">Exit Navigation</a>
+
+    <script>
+        let recognition;
+        let isListening = false;
+
+        function initSpeech() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("Web Speech API not supported. Please use Chrome.");
+                return;
+            }
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = function () {
+                isListening = true;
+                updateUIState('listening');
+            };
+
+            recognition.onend = function () {
+                isListening = false;
+                // Don't auto-reset UI immediately if we found something, let logic handle it
+                if (document.getElementById('voice-btn').classList.contains('listening')) {
+                    updateUIState('idle');
+                }
+            };
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript;
+                console.log("Heard:", transcript);
+
+                const target = parseCommand(transcript);
+                if (target) {
+                    setTarget(target);
+                    updateUIState('searching', target);
+                } else {
+                    updateUIState('error', "Could not understand");
+                    setTimeout(() => updateUIState('idle'), 2000);
+                }
+            };
+
+            recognition.onerror = function (event) {
+                console.error("Speech error", event.error);
+                updateUIState('error', "Error: " + event.error);
+                isListening = false;
+            }
+        }
+
+        function toggleVoice() {
+            if (!recognition) initSpeech();
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function parseCommand(text) {
+            text = text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+            const prefixes = ["find the", "find my", "find", "search for", "where is", "locate"];
+
+            for (let prefix of prefixes) {
+                if (text.startsWith(prefix)) {
+                    return text.slice(prefix.length).trim();
+                }
+            }
+            // Fallback: if single word, assume object
+            if (text.split(" ").length === 1) return text;
+            return null;
+        }
+
+        function setTarget(mode) {
+            $.ajax({
+                url: '/api/set_target',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ mode: mode }),
+                success: function (response) {
+                    console.log("Target set to:", mode);
+                }
+            });
+        }
+
+        function calibrate() {
+            $.ajax({
+                url: '/api/calibrate',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ distance: 50 }),
+                success: function (response) {
+                    $('#calib-status').text("Calibrating...").css('color', 'orange');
+                    setTimeout(() => {
+                        $('#calib-status').text("Done! Check distance.").css('color', 'green');
+                    }, 1000);
+                }
+            });
+        }
+
+        function updateUIState(state, data) {
+            const btn = document.getElementById('voice-btn');
+            const mainText = document.getElementById('main-instruction');
+            const statusChip = document.getElementById('status-chip');
+            const statusText = document.getElementById('status-text');
+
+            if (state === 'listening') {
+                btn.classList.add('listening');
+                mainText.innerText = "Listening...";
+                statusChip.classList.remove('visible');
+            } else if (state === 'searching') {
+                btn.classList.remove('listening');
+                mainText.innerText = "Searching for " + data;
+                statusText.innerText = "Finding: " + data;
+                statusChip.classList.add('visible');
+            } else if (state === 'error') {
+                btn.classList.remove('listening');
+                mainText.innerText = data;
+            } else { // idle
+                btn.classList.remove('listening');
+                mainText.innerText = "Tap to Speak";
+            }
+        }
+
+        // Init on load
+        $(document).ready(function () {
+            initSpeech();
+        });
+
+    </script>
+</body>
+
+</html>

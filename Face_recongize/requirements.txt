@@ -1,0 +1,9 @@
+flask
+opencv-contrib-python
+numpy
+pillow
+pyttsx3
+ultralytics
+google-generativeai
+python-dotenv
+pywin32

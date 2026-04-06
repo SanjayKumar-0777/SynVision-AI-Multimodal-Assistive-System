@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language AI | Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand">
+            <span class="status-dot"></span> SignAI
+        </a>
+        <div class="nav-links">
+            <a href="/" class="nav-link active">Home</a>
+            <a href="/collect" class="nav-link">Collect Data</a>
+            <a href="/train_page" class="nav-link">Train Model</a>
+            <a href="/recognize" class="nav-link">Recognize</a>
+        
+            <button id="mic-btn" onclick="startVoiceCommand()" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; cursor: pointer; padding: 0.5rem 1rem; margin-left: 10px; font-size: 1rem; transition: background 0.2s;" title="Voice Command">
+                🎤 Voice Nav
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card" style="text-align: center; padding: 4rem 2rem;">
+            <h1>Next-Gen Sign Language Recognition</h1>
+            <p style="color: #94a3b8; font-size: 1.2rem; max-width: 600px; margin: 1rem auto;">
+                Powered by Advanced AI, Holistic Tracking, and Auto-Speak Technology for the visually impaired.
+            </p>
+            <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+                <a href="/recognize" class="btn btn-primary">Start Recognition</a>
+                <a href="/collect" class="btn btn-secondary">Collect New Data</a>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="stat-card">
+                <div class="stat-value">Holistic</div>
+                <div class="stat-label">Face, Pose & Hand Tracking</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">Auto-Speak</div>
+                <div class="stat-label">Hands-Free TTS (5s Delay)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">95%+</div>
+                <div class="stat-label">Target Accuracy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">Real-Time</div>
+                <div class="stat-label">Low Latency Inference</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        setInterval(() => {
+            fetch('/ping').catch(() => {});
+        }, 2000);
+    </script>
+
+<script>
+    function startVoiceCommand() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Your browser does not support Voice Recognition.");
+            return;
+        }
+        
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        let micBtn = document.getElementById('mic-btn');
+        let originalText = micBtn.innerHTML;
+        micBtn.innerHTML = "🔴 Listening...";
+        micBtn.style.background = "#e11d48";
+
+        recognition.start();
+
+                recognition.onresult = function(event) {
+            const speechResult = event.results[0][0].transcript.toLowerCase();
+            console.log("Heard:", speechResult);
+            
+            // ACTION COMMANDS
+            if (speechResult.includes("capture") || speechResult.includes("start collect")) {
+                if (typeof startAutoCapture === 'function') { startAutoCapture(); } else { window.location.href = "/collect"; }
+            } else if (speechResult.includes("stop")) {
+                if (typeof stopAutoCapture === 'function') { stopAutoCapture(); }
+            } else if (speechResult.includes("execute train") || speechResult.includes("start train") || speechResult.includes("begin train")) {
+                if (typeof startTraining === 'function') { startTraining(); } else { window.location.href = "/train_page"; }
+            } else if (speechResult.includes("speak") || speechResult.includes("read") || speechResult.includes("say it") || speechResult.includes("listen")) {
+                if (typeof speak === 'function') { speak(); } else { alert("The speak command is only available on the Recognize page."); }
+            } else if (speechResult.includes("clear") || speechResult.includes("reset") || speechResult.includes("delete")) {
+                if (typeof reset === 'function') { reset(); } else { alert("The clear buffer command is only available on the Recognize page."); }
+            } 
+            // NAVIGATION COMMANDS
+            else if (speechResult.includes("collect") || speechResult.includes("data")) {
+                window.location.href = "/collect";
+            } else if (speechResult.includes("train") || speechResult.includes("model")) {
+                window.location.href = "/train_page";
+            } else if (speechResult.includes("recognize") || speechResult.includes("recognise") || speechResult.includes("recognition") || speechResult.includes("translate") || speechResult.includes("live")) {
+                window.location.href = "/recognize";
+            } else if (speechResult.includes("home") || speechResult.includes("main") || speechResult.includes("menu") || speechResult.includes("back")) {
+                window.location.href = "/";
+            } else {
+                alert("Hmm, I didn't catch that command! I heard: '" + speechResult + "'.\\nPlease try an action like 'capture' or a page like 'home'.");
+            }
+            
+            micBtn.innerHTML = originalText;
+            micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+        };
+
+        recognition.onspeechend = function() {
+            recognition.stop();
+            setTimeout(() => {
+                micBtn.innerHTML = originalText;
+                micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+            }, 500);
+        };
+
+        recognition.onerror = function(event) {
+            console.error("Speech error", event.error);
+            micBtn.innerHTML = originalText;
+            micBtn.style.background = "rgba(255, 255, 255, 0.1)";
+        };
+    }
+</script>
+</body>
+
+
+</html>
